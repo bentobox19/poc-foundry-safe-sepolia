@@ -7,3 +7,5 @@ remappings = [
    "@safe-global/safe-contracts/=lib/safe-contracts"
 ]
 
+[lint]
+exclude_lints = ["asm-keccak256"]

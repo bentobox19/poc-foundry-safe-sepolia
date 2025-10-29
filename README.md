@@ -5,17 +5,20 @@ _Exercises_
 
 <!-- MarkdownTOC -->
 
-- Transactions to Sepolia
+- Wallet Preparation
     - Generate a key
     - Send funds from other account
     - Derive 5 wallets and send them funds
-- Operations in your fork of Sepolia
-    - Run the live fork with anvil
+- Operate in a local fork of Sepolia
+- Deploy Safe Wallet and Simple Contract
     - Deploy a safe wallet
+    - Deploy a simple contract for the Safe to interact with
+- Interacting with the Multisig and Contract
+    - Generate a confirmation
 
 <!-- /MarkdownTOC -->
 
-## Transactions to Sepolia
+## Wallet Preparation
 
 ### Generate a key
 
@@ -32,10 +35,10 @@ cast wallet address --mnemonic "$MNEMONIC" --mnemonic-derivation-path "m/44'/60'
 ### Send funds from other account
 
 ````bash
-# Load the mnemonic
-export MNEMONIC="..."
+# Load the mnemonic and/or private key of the funding wallet
+export FUNDING_ADDR_MNEMONIC="..."
 
-export PRIVATE_KEY=$(cast wallet private-key --mnemonic "$MNEMONIC" --mnemonic-derivation-path "m/44'/60'/0'/0/0")
+export PRIVATE_KEY=$(cast wallet private-key --mnemonic "$FUNDING_ADDR_MNEMONIC" --mnemonic-derivation-path "m/44'/60'/0'/0/0")
 
 # Load the RPC
 export ETH_RPC_URL="https://eth-sepolia.g.alchemy.com/v2/..."
@@ -61,7 +64,7 @@ for i in {0..5}; do
     echo "Address: $address Balance: $balance"
 done
 
-# Like
+# Example
 ## Address: 0xabc1 Balance: 994999894999055000
 ## Address: 0xabc2 Balance: 1000000000000000
 ## Address: 0xabc3 Balance: 1000000000000000
@@ -70,12 +73,10 @@ done
 ## Address: 0xabc6 Balance: 1000000000000000
 ````
 
-## Operations in your fork of Sepolia
-
-### Run the live fork with anvil
+## Operate in a local fork of Sepolia
 
 ````bash
-export ETH_RPC_URL="https://eth-sepolia.g.alchemy.com/v2/..."
+export ETH_RPC_URL="https://eth-sepolia.g.alchemy.com/v2/..."_Tk_LCg1kGU_20-t0Q-tw
 
 anvil --fork-url $ETH_RPC_URL --port 8545 --chain-id 11155111
 
@@ -83,12 +84,11 @@ anvil --fork-url $ETH_RPC_URL --port 8545 --chain-id 11155111
 # cast by default will go to localhost:8545
 cast balance 0xabc1
 1000000000000000
-
-# One comment:
-# You could just have postponed the whole step of sending funds in Sepolia to your 6 wallets.
-# But you will have to do it anyways later, if you want to test your interactions with the
-# Safe Transaction Service.
 ````
+
+IMPORTANT: Make sure that, when you are in this mode, all your other commands to the blockchain point to `localhost:8545`
+
+## Deploy Safe Wallet and Simple Contract
 
 ### Deploy a safe wallet
 
@@ -152,9 +152,6 @@ for i in {1..5}; do
     export WALLET_${i}_ADDRESS="$address"
 done
 
-# We default to the localhost RPC, as we are running a live fork of Sepolia
-export ETH_RPC_URL="127.0.0.1:8545"
-
 # Run the script
 #   --rpc-url option must be included
 forge script --rpc-url $ETH_RPC_URL script/DeploySafe.s.sol --broadcast
@@ -163,7 +160,7 @@ forge script --rpc-url $ETH_RPC_URL script/DeploySafe.s.sol --broadcast
 Interact with the safe wallet contract
 
 ````bash
-# You got the address it from the script output
+# You got the address from the script output
 export SAFE_ADDRESS="0xabcabc0.."
 
 cast call $SAFE_ADDRESS "getThreshold()(uint256)"
@@ -172,3 +169,139 @@ cast call $SAFE_ADDRESS "getThreshold()(uint256)"
 cast call $SAFE_ADDRESS "getOwners()(address[])"
 # (Array with owners)
 ````
+
+If you are not in the local fork, you can always look at your contract in Etherscan
+
+- https://sepolia.etherscan.io/address/0x3DE...e99/advanced
+
+### Deploy a simple contract for the Safe to interact with
+
+````solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.30;
+
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+
+contract MyContract is Ownable {
+    address public safeWallet;
+
+    constructor(address _safeWallet) Ownable(_safeWallet) {
+        safeWallet = _safeWallet;
+    }
+
+    function storeBlockNumber() external onlyOwner {
+        bytes32 slot42 = keccak256(abi.encodePacked(uint256(42)));
+        uint256 blockNum = block.number;
+        assembly {
+            sstore(slot42, blockNum)
+        }
+    }
+
+    function getStoredBlockNumber() external view returns (uint256) {
+        bytes32 slot42 = keccak256(abi.encodePacked(uint256(42)));
+        uint256 value;
+        assembly {
+            value := sload(slot42)
+        }
+        return value;
+    }
+}
+````
+
+````bash
+# Recall that $SAFE_ADDRESS is in the output of the latter deployment
+export SAFE_ADDRESS="0xabcabc0.."
+
+# Run the script
+## NOTE: Order in the command line options is really important, the following won't work
+### forge create src/SimpleContract.sol:SimpleContract --constructor-args "$SAFE_ADDRESS" --rpc-url $ETH_RPC_URL --private-key $PRIVATE_KEY_WALLET_0
+forge create src/SimpleContract.sol:SimpleContract --broadcast --private-key $PRIVATE_KEY_WALLET_0 --constructor-args "$SAFE_ADDRESS" --rpc-url $ETH_RPC_URL
+
+# Do
+export SIMPLE_CONTRACT="0xddff..."
+````
+
+## Interacting with the Multisig and Contract
+
+We assume that everything has been deployed to Sepolia already.
+
+
+And that you have an API Key in Safe:
+
+- https://docs.safe.global/core-api/how-to-use-api-keys
+- https://developer.safe.global/login
+
+````bash
+# Set the key as an env variable here
+export SAFE_API_KEY="N2V...1NK"
+````
+
+Some documentation in here
+
+- https://docs.safe.global/advanced/smart-account-supported-networks
+- https://safe-transaction-sepolia.safe.global/
+- https://docs.safe.global/core-api/transaction-service-reference/sepolia
+
+Try it out. Let's get the safes that the user `$WALLET_3_ADDRESS` owns
+
+````bash
+# NOTE: If you forget the trailing slash, you will get redirected (301)
+curl -X GET https://api.safe.global/tx-service/sep/api/v1/owners/$WALLET_3_ADDRESS/safes/ \
+    -H "Accept: application/json" \
+    -H "content-type: application/json" \
+    -H "Authorization: Bearer $SAFE_API_KEY"
+
+# {"safes":["0xabcabc0.."]}%
+````
+
+### Generate a confirmation
+
+We want our safe wallet to talk to this deployed `SimpleContract`, particularly to `storeBlockNumber()`
+
+````bash
+# STATUS INCOMPLETE
+## Learning how to compute `contractTransactionHash``
+
+#######################
+
+# We need the nonce - Take it from the response to this API request
+curl -X GET https://api.safe.global/tx-service/sep/api/v1/safes/$SAFE_ADDRESS/ \
+    -H "Accept: application/json" \
+    -H "content-type: application/json" \
+    -H "Authorization: Bearer $SAFE_API_KEY"
+
+export PROPOSAL_NONCE=0
+
+
+# "0x6057361d": Keccak sha3 of `storeBlockNumber()`
+# "signatures": Leave empty initially
+curl -X POST https://api.safe.global/tx-service/sep/api/v2/safes/$SAFE_ADDRESS/multisig-transactions/ \
+    -H "Accept: application/json" \
+    -H "content-type: application/json" \
+    -H "Authorization: Bearer $SAFE_API_KEY" \
+    -d '{
+  "to": "'$SIMPLE_CONTRACT'",
+  "nonce": "'$PROPOSAL_NONCE'",
+  "sender": "'$WALLET_1_ADDRESS'",
+  "value": "0",
+  "data": "0x6057361d",
+  "operation": 0,
+  "safeTxGas": 0,
+  "baseGas": 0,
+  "gasPrice": 0,
+  "gasToken": "0x0000000000000000000000000000000000000000",
+  "refundReceiver": "0x0000000000000000000000000000000000000000",
+  "signatures": []
+}'
+````
+
+We check the proposal we just sent.
+
+````bash
+# List a safe's mutisig transactions
+curl -X GET https://api.safe.global/tx-service/sep/api/v2/safes/$SAFE_ADDRESS/multisig-transactions/ \
+    -H "Accept: application/json" \
+    -H "content-type: application/json" \
+    -H "Authorization: Bearer $SAFE_API_KEY"
+````
+
