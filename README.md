@@ -259,11 +259,6 @@ curl -X GET https://api.safe.global/tx-service/sep/api/v1/owners/$WALLET_3_ADDRE
 We want our safe wallet to talk to this deployed `SimpleContract`, particularly to `storeBlockNumber()`
 
 ````bash
-# STATUS INCOMPLETE
-## Learning how to compute `contractTransactionHash``
-
-#######################
-
 # We need the nonce - Take it from the response to this API request
 curl -X GET https://api.safe.global/tx-service/sep/api/v1/safes/$SAFE_ADDRESS/ \
     -H "Accept: application/json" \
@@ -272,6 +267,26 @@ curl -X GET https://api.safe.global/tx-service/sep/api/v1/safes/$SAFE_ADDRESS/ \
 
 export PROPOSAL_NONCE=0
 
+# Let's compute the transaction hash
+## There are several ways and tools to do this
+## - https://github.com/OpenZeppelin/safe-utils
+## - https://github.com/pcaversaccio/safe-tx-hashes-util
+## We can always use the function ISafe.getTransactionHash()
+## - https://docs.safe.global/reference-smart-account/transactions/getTransactionHash
+cast call $SAFE_ADDRESS "getTransactionHash(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,uint256)" \
+  $SIMPLE_CONTRACT \
+  0 \
+  "0x6057361d" \
+  0 \
+  0 \
+  0 \
+  0 \
+  "0x0000000000000000000000000000000000000000" \
+  "0x0000000000000000000000000000000000000000" \
+  $PROPOSAL_NONCE \
+  --rpc-url $ETH_RPC_URL
+
+export CONTRACT_TX_HASH_1="0xaaaa..."
 
 # "0x6057361d": Keccak sha3 of `storeBlockNumber()`
 # "signatures": Leave empty initially
@@ -283,6 +298,7 @@ curl -X POST https://api.safe.global/tx-service/sep/api/v2/safes/$SAFE_ADDRESS/m
   "to": "'$SIMPLE_CONTRACT'",
   "nonce": "'$PROPOSAL_NONCE'",
   "sender": "'$WALLET_1_ADDRESS'",
+  "contractTransactionHash": "'$CONTRACT_TX_HASH_1'",
   "value": "0",
   "data": "0x6057361d",
   "operation": 0,
@@ -305,3 +321,6 @@ curl -X GET https://api.safe.global/tx-service/sep/api/v2/safes/$SAFE_ADDRESS/mu
     -H "Authorization: Bearer $SAFE_API_KEY"
 ````
 
+You should also be able to see it at the Safe DAPP
+
+- https://app.safe.global/home?safe=sep:0xABC...
