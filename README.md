@@ -14,7 +14,7 @@ _Exercises_
     - Deploy a safe wallet
     - Deploy a simple contract for the Safe to interact with
 - Interacting with the Multisig and Contract
-    - Generate a confirmation
+    - Generate a Confirmation
 
 <!-- /MarkdownTOC -->
 
@@ -250,11 +250,15 @@ curl -X GET https://api.safe.global/tx-service/sep/api/v1/owners/$WALLET_3_ADDRE
     -H "Accept: application/json" \
     -H "content-type: application/json" \
     -H "Authorization: Bearer $SAFE_API_KEY"
-
-# {"safes":["0xabcabc0.."]}%
 ````
 
-### Generate a confirmation
+### Generate a Confirmation
+
+Some References
+
+- https://docs.safe.global/core-api/api-safe-transaction-service
+- https://docs.safe.global/sdk/api-kit/guides/propose-and-confirm-transactions
+- https://api.safe.global/tx-service/sep#/transactions/safes_multisig_transactions_create_2
 
 We want our safe wallet to talk to this deployed `SimpleContract`, particularly to `storeBlockNumber()`
 
@@ -286,7 +290,7 @@ cast call $SAFE_ADDRESS "getTransactionHash(address,uint256,bytes,uint8,uint256,
   $PROPOSAL_NONCE \
   --rpc-url $ETH_RPC_URL
 
-export CONTRACT_TX_HASH_1="0xaaaa..."
+export SAFE_TX_HASH="0xaaaa..."
 
 # "0x6057361d": Keccak sha3 of `storeBlockNumber()`
 # "signatures": Leave empty initially
@@ -298,7 +302,7 @@ curl -X POST https://api.safe.global/tx-service/sep/api/v2/safes/$SAFE_ADDRESS/m
   "to": "'$SIMPLE_CONTRACT'",
   "nonce": "'$PROPOSAL_NONCE'",
   "sender": "'$WALLET_1_ADDRESS'",
-  "contractTransactionHash": "'$CONTRACT_TX_HASH_1'",
+  "contractTransactionHash": "'$SAFE_TX_HASH'",
   "value": "0",
   "data": "0x6057361d",
   "operation": 0,
@@ -310,8 +314,32 @@ curl -X POST https://api.safe.global/tx-service/sep/api/v2/safes/$SAFE_ADDRESS/m
   "signatures": []
 }'
 ````
-
 We check the proposal we just sent.
+
+````bash
+curl -X GET https://api.safe.global/tx-service/sep/api/v2/multisig-transactions/$SAFE_TX_HASH/ \
+    -H "Accept: application/json" \
+    -H "Authorization: Bearer $SAFE_API_KEY"
+````
+
+Now, one of the owners will **confirm** the transaction by signing it
+
+````bash
+# Sign the confirmation
+## Notice the "--no-hash" flag
+cast wallet sign --private-key $(cast wallet private-key --mnemonic "$MNEMONIC" --mnemonic-derivation-path "m/44'/60'/0'/0/1") --no-hash $SAFE_TX_HASH
+
+export SIGNATURE="0x626de304904f9cca5c..."
+
+# Submit the confirmation
+curl -X POST "https://api.safe.global/tx-service/sep/api/v1/multisig-transactions/$SAFE_TX_HASH/confirmations/" \
+  -H "Accept: application/json" \
+  -H "content-type: application/json" \
+  -H "Authorization: Bearer $SAFE_API_KEY" \
+  -d "{\"signature\": \"$SIGNATURE\"}"
+````
+
+We can see the state of the proposal
 
 ````bash
 # List a safe's mutisig transactions
@@ -321,6 +349,65 @@ curl -X GET https://api.safe.global/tx-service/sep/api/v2/safes/$SAFE_ADDRESS/mu
     -H "Authorization: Bearer $SAFE_API_KEY"
 ````
 
-You should also be able to see it at the Safe DAPP
+This is a sample. Notice the timestamps on the reception of the proposal and each confirmation.
 
-- https://app.safe.global/home?safe=sep:0xABC...
+````json
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "safe": "<0x SAFE ADDRESS>",
+      "to": "<0x TARGET CONTRACT ADDRESS>",
+      "value": "0",
+      "data": "0x6057361d",
+      "operation": 0,
+      "gasToken": "0x0000000000000000000000000000000000000000",
+      "safeTxGas": "0",
+      "baseGas": "0",
+      "gasPrice": "0",
+      "refundReceiver": "0x0000000000000000000000000000000000000000",
+      "nonce": "0",
+      "executionDate": null,
+      "submissionDate": "2025-10-29T23:47:50.285157Z",
+      "modified": "2025-10-30T13:12:15.689163Z",
+      "blockNumber": null,
+      "transactionHash": null,
+      "safeTxHash": "0xb121080d2430cafac3a85ded16ebfd008a481eeb5f5fa34e6796cae17de4e0b2",
+      "proposer": "<0x WALLET 1 ADDRESS>",
+      "proposedByDelegate": null,
+      "executor": null,
+      "isExecuted": false,
+      "isSuccessful": null,
+      "ethGasPrice": null,
+      "maxFeePerGas": null,
+      "maxPriorityFeePerGas": null,
+      "gasUsed": null,
+      "fee": null,
+      "origin": "{}",
+      "dataDecoded": null,
+      "confirmationsRequired": 3,
+      "confirmations": [
+        {
+          "owner": "<0x WALLET 1 ADDRESS>",
+          "submissionDate": "2025-10-30T13:01:53.039501Z",
+          "transactionHash": null,
+          "signature": "<0x SIGNATURE 1>",
+          "signatureType": "EOA"
+        },
+        {
+          "owner": "0x WALLET 2 ADDRESS>",
+          "submissionDate": "2025-10-30T13:12:15.689163Z",
+          "transactionHash": null,
+          "signature": "<0x SIGNATURE 2>",
+          "signatureType": "EOA"
+        }
+      ],
+      "trusted": true,
+      "signatures": null
+    }
+  ],
+  "countUniqueNonce": 1
+}
+````
