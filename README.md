@@ -6,29 +6,29 @@ A study on Safe wallet multisig operation.
 
 - Disclaimer
 - Preliminaires: Wallets
-    - New seedphrase
-    - Funding from an existing wallet
-    - Derive 5 wallets and send them funds
-    - Sort the wallets and private keys
+  - New seedphrase
+  - Funding from an existing wallet
+  - Derive 5 wallets and send them funds
+  - Sort the wallets and private keys
 - Side Note: If you want to operate in a local fork of Sepolia
 - Deploying safe wallet and simple contract artifacts
-    - Finding the addresses in Sepolia
-    - Deploy the safe wallet
-    - Check - Interact with the safe wallet contract
-    - Deploy a simple contract for the safe wallet to interact with
-    - Check - Interact with deployed contract
-- Safe transaction service
+  - Finding the addresses in Sepolia
+  - Deploy the safe wallet
+  - Check - Interact with the safe wallet contract
+  - Deploy a simple contract for the safe wallet to interact with
+  - Check - Interact with deployed contract
 - Multisig transaction
-    - Goal
-    - Generate proposal
-        - Compute transaction hash
-        - Send the multisig proposal
-        - Check - Proposal sent
-        - Sign and send a confirmation
-        - Check - Proposal status
-        - Sample of the status response
-        - Execute the transaction
-        - Test the value at the simple contract
+  - Goal
+  - Safe transaction service
+  - Generate a proposal
+    - Compute transaction hash
+    - Send the multisig proposal
+    - Check - Proposal sent
+    - Sign and send a confirmation
+    - Check - Proposal status
+    - Sample of the status response
+  - Execute the transaction
+    - Test the value at the simple contract
 
 <!-- /MarkdownTOC -->
 
@@ -199,7 +199,13 @@ cast call --rpc-url $RPC_URL $SIMPLE_CONTRACT_ADDRESS "getStoredBlockNumber()"
 cast call --rpc-url $RPC_URL $SIMPLE_CONTRACT_ADDRESS --data "0xad3d7dd7"
 ````
 
-## Safe transaction service
+## Multisig transaction
+
+### Goal
+
+We want our safe wallet to talk to this deployed `SimpleContract`, particularly to `storeBlockNumber()`
+
+### Safe transaction service
 
 ````bash
 # Set the key as an environment variable
@@ -225,13 +231,7 @@ curl -X GET https://api.safe.global/tx-service/sep/api/v1/owners/$WALLET_ADDRESS
     -H "Authorization: Bearer $SAFE_API_KEY"
 ````
 
-## Multisig transaction
-
-### Goal
-
-We want our safe wallet to talk to this deployed `SimpleContract`, particularly to `storeBlockNumber()`
-
-### Generate proposal
+### Generate a proposal
 
 Documentation links
 
@@ -396,7 +396,7 @@ curl -X GET https://api.safe.global/tx-service/sep/api/v2/multisig-transactions/
 }
 ```
 
-#### Execute the transaction
+### Execute the transaction
 
 A call to the safe wallet can be made once the number of confirmations reaches the threshold.
 
