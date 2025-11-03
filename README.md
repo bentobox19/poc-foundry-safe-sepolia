@@ -23,7 +23,6 @@ A study on Safe wallet multisig operation.
   - Generate a proposal
     - Compute transaction hash
     - Send the multisig proposal
-    - Check - Proposal sent
     - Sign and send a confirmation
     - Check - Proposal status
     - Sample of the status response
@@ -129,8 +128,6 @@ done
 ## Side Note: If you want to operate in a local fork of Sepolia
 
 ````bash
-export RPC_URL="https://eth-sepolia.g.alchemy.com/v2/<ALCHEMY_API_KEY>"
-
 anvil --fork-url $RPC_URL --port 8545 --chain-id 11155111
 
 cast balance $WALLET_ADDRESS_1 --rpc-url http://localhost:8545
@@ -218,9 +215,9 @@ Documentation links
   - https://docs.safe.global/core-api/how-to-use-api-keys
   - https://developer.safe.global/login
 - Safe transaction service
-  - https://docs.safe.global/advanced/smart-account-supported-networks
-  - https://safe-transaction-sepolia.safe.global/
   - https://docs.safe.global/core-api/transaction-service-reference/sepolia
+  - https://api.safe.global/tx-service/sep#/
+  - https://safe-transaction-sepolia.safe.global/
 
 Test the Endpoint - Get the safes owned by `$WALLET_ADDRESS_3`
 
@@ -232,12 +229,6 @@ curl -X GET https://api.safe.global/tx-service/sep/api/v1/owners/$WALLET_ADDRESS
 ````
 
 ### Generate a proposal
-
-Documentation links
-
-- https://api.safe.global/tx-service/sep#/transactions/
-- https://docs.safe.global/sdk/api-kit/guides/propose-and-confirm-transactions
-
 
 We need the nonce - Take it from the response to this API request
 
@@ -302,14 +293,6 @@ curl -X POST https://api.safe.global/tx-service/sep/api/v2/safes/$SAFE_ADDRESS/m
 }'
 ````
 
-#### Check - Proposal sent
-
-````bash
-curl -X GET https://api.safe.global/tx-service/sep/api/v2/multisig-transactions/$SAFE_TX_HASH/ \
-    -H "Accept: application/json" \
-    -H "Authorization: Bearer $SAFE_API_KEY"
-````
-
 #### Sign and send a confirmation
 
 ````bash
@@ -328,6 +311,7 @@ curl -X POST "https://api.safe.global/tx-service/sep/api/v1/multisig-transaction
 #### Check - Proposal status
 
 ````bash
+# You will only get a response after the first confirmation is sent
 curl -X GET https://api.safe.global/tx-service/sep/api/v2/multisig-transactions/$SAFE_TX_HASH/ \
     -H "Accept: application/json" \
     -H "Authorization: Bearer $SAFE_API_KEY"
@@ -403,9 +387,37 @@ A call to the safe wallet can be made once the number of confirmations reaches t
 We can always replace `cast send` with `cast call` to test the transaction
 
 ````bash
-export SIGNATURES="0x${SIcast call --rpc-url $RPC_URL $SIMPLE_CONTRACT_ADDRESS --data "0xad3d7dd7"GNATURE_1#0x}${SIGNATURE_2#0x}${SIGNATURE_3#0x}"
+## Make sure the signatures are sorted by their index
+local all_sig=""
 
-cast send --rpc-url $RPC_URL --private-key $PRIVATE_KEY_0 $SAFE_ADDRESS "execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes)" $SIMPLE_CONTRACT_ADDRESS 0 "0x8ceb50ab" 0 0 0 0 "0x0000000000000000000000000000000000000000" "0x0000000000000000000000000000000000000000" $SIGNATURES
+for i in {1..5}; do
+  sig_var="SIGNATURE_${i}"
+  # Check if the variable is set and non-empty
+  if [[ -n ${(P)sig_var} ]]; then
+    all_sig="${all_sig}${(P)sig_var#0x}"
+  fi
+done
+
+export signatures="0x${all_sig}"
+
+# Execute the actual transaction.
+# Notice that the account #0 will send the transaction,
+# meaning that given the signatures, anybody can just trigger it.
+cast call \
+  --rpc-url $RPC_URL \
+  --private-key $PRIVATE_KEY_0 \
+  $SAFE_ADDRESS \
+  "execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes) \
+  $SIMPLE_CONTRACT_ADDRESS \
+  0 \
+  "0x8ceb50ab" \
+  0 \
+  0 \
+  0 \
+  0 \
+  "0x0000000000000000000000000000000000000000" \
+  "0x0000000000000000000000000000000000000000" \
+  $signatures
 ````
 
 #### Test the value at the simple contract
