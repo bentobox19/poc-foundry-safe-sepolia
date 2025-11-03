@@ -137,9 +137,9 @@ export SIMPLE_CONTRACT_ADDRESS="<SIMPLE_CONTRACT_ADDRESS>" ### (See the script o
 
 ## Proposal / Confirmations / Execution
 source ./utils/helper-create-proposal.sh
+source ./utils/helper-create-confirmation.sh 5
 source ./utils/helper-create-confirmation.sh 1
 source ./utils/helper-create-confirmation.sh 2
-source ./utils/helper-create-confirmation.sh 5
 ./utils/helper-execute-transaction.sh
 
 ## Checks
