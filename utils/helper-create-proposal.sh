@@ -50,3 +50,8 @@ curl -X POST https://api.safe.global/tx-service/sep/api/v2/safes/$SAFE_ADDRESS/m
   "refundReceiver": "0x0000000000000000000000000000000000000000",
   "signatures": []
 }'
+
+## Clean up the env variables
+for i in {1..5}; do
+    unset SIGNATURE_$i
+done
