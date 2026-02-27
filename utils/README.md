@@ -8,9 +8,9 @@
 - Deploy artifacts
 - Check the Deployed Artifacts
 - Multisig Operations
-  - Proposal
-  - Confirmations
-  - Execution
+    - Proposal
+    - Confirmations
+    - Execution
 - Summary
 
 <!-- /MarkdownTOC -->
@@ -108,7 +108,7 @@ source ./utils/helper-create-confirmation.sh 5
 ````bash
 # Check the status of the proposal
 
- ./utils/check-safe-status.sh
+./utils/check-safe-status.sh
 ````
 
 ### Execution
