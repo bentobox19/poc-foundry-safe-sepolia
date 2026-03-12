@@ -1,6 +1,4 @@
-# Foundry, Sepolia and Safe Wallets
-
-A study on Safe wallet multisig operation.
+# Low-level interaction with Safe Wallets (in Sepolia) using Foundry
 
 <!-- MarkdownTOC -->
 
